@@ -17,24 +17,6 @@ RUN curl -fsSL https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.x
   && mv zig-linux-x86_64-0.14.0/zig /usr/bin/ \
   && mv zig-linux-x86_64-0.14.0/lib/ /usr/lib/zig/ \
   && zig version
-  
-FROM debian:bookworm-slim as zig
-
-COPY --from=install /usr/bin/zig /usr/bin/zig
-COPY --from=install /usr/lib/zig /usr/lib/zig
-
-WORKDIR /hellozig
-
-RUN zig version
-
-RUN echo "const std = @import(\"std\");\n" > hello.zig \
-  &&  echo "pub fn main() void {" >> hello.zig \
-  &&  echo "  std.debug.print(\"Hello Zig!\\n", .{});" >> hello.zig \
-  &&  echo "}" >> hello.zig \
-  && cat hello.zig
-
-RUN ls -lisah \
-  && zig run hello.zig
 
 FROM debian:bookworm-slim as zigzag
 
