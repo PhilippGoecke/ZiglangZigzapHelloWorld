@@ -1,13 +1,13 @@
 const std = @import("std");
 const zap = @import("zap");
 
-fn on_request(r: zap.Request) void {
+fn on_request(r: zap.Request) !void {
   if (r.path) |the_path| {
-      std.debug.print("PATH: {s}\n", .{the_path});
+    std.debug.print("PATH: {s}\n", .{the_path});
   }
 
   if (r.query) |the_query| {
-      std.debug.print("QUERY: {s}\n", .{the_query});
+    std.debug.print("QUERY: {s}\n", .{the_query});
   }
 
   const body = "<html><body><h1>Hello World!</h1></body></html>";
@@ -17,10 +17,10 @@ fn on_request(r: zap.Request) void {
 
 pub fn main() !void {
   var listener = zap.HttpListener.init(.{
-      .port = 3000,
-      .on_request = on_request,
-      .log = true,
-      .max_clients = 100000,
+    .port = 3000,
+    .on_request = on_request,
+    .log = true,
+    .max_clients = 100000,
   });
   try listener.listen();
 
