@@ -10,6 +10,11 @@ fn on_request(r: zap.Request) !void {
     std.debug.print("QUERY: {s}\n", .{the_query});
   }
 
+  var arg_it = r.getParamSlices();
+  while (arg_it.next()) |param| {
+    std.log.info("ParamStr `{s}` is `{s}`", .{ param.name, param.value });
+  }
+
   const body = "<html><body><h1>Hello World!</h1></body></html>";
 
   r.sendBody(body) catch return;
