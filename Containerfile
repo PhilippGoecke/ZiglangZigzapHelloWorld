@@ -18,7 +18,7 @@ RUN curl -fsSL https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.x
   && mv zig-linux-x86_64-0.14.0/lib/ /usr/lib/zig/ \
   && zig version
 
-FROM debian:bookworm-slim as zigzag
+FROM debian:bookworm-slim as zigzap
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -30,10 +30,10 @@ RUN apt update && apt upgrade -y \
 COPY --from=install /usr/bin/zig /usr/bin/zig
 COPY --from=install /usr/lib/zig /usr/lib/zig
 
-WORKDIR /zigzag
+WORKDIR /zigzap
 
 RUN zig init \
-  && zig fetch --save "git+https://github.com/zigzap/zap#v0.9.0" \
+  && zig fetch --save "git+https://github.com/zigzap/zap#v0.10.1" \
   && echo "const zap = b.dependency(\"zap\", .{ .target = target, .optimize = optimize, .openssl = false, });\nexe.root_module.addImport(\"zap\", zap.module(\"zap\"));\n}" >> build.zig \
   && sed -zi "s/}\nconst/\nconst/g" build.zig
 
