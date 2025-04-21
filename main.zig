@@ -2,32 +2,32 @@ const std = @import("std");
 const zap = @import("zap");
 
 fn on_request(r: zap.Request) void {
-    if (r.path) |the_path| {
-        std.debug.print("PATH: {s}\n", .{the_path});
-    }
+  if (r.path) |the_path| {
+      std.debug.print("PATH: {s}\n", .{the_path});
+  }
 
-    if (r.query) |the_query| {
-        std.debug.print("QUERY: {s}\n", .{the_query});
-    }
+  if (r.query) |the_query| {
+      std.debug.print("QUERY: {s}\n", .{the_query});
+  }
 
-    const body = "<html><body><h1>Hello World!</h1></body></html>";
+  const body = "<html><body><h1>Hello World!</h1></body></html>";
 
-    r.sendBody(body) catch return;
+  r.sendBody(body) catch return;
 }
 
 pub fn main() !void {
-    var listener = zap.HttpListener.init(.{
-        .port = 3000,
-        .on_request = on_request,
-        .log = true,
-        .max_clients = 100000,
-    });
-    try listener.listen();
+  var listener = zap.HttpListener.init(.{
+      .port = 3000,
+      .on_request = on_request,
+      .log = true,
+      .max_clients = 100000,
+  });
+  try listener.listen();
 
-    std.debug.print("Listening on 0.0.0.0:3000\n", .{});
+  std.debug.print("Listening on 0.0.0.0:3000\n", .{});
 
-    zap.start(.{
-        .threads = 2,
-        .workers = 1, // 1 worker enables sharing state between threads
-    });
+  zap.start(.{
+    .threads = 2,
+    .workers = 1, // 1 worker enables sharing state between threads
+  });
 }
