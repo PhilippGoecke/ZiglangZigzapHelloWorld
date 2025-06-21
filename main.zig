@@ -15,12 +15,7 @@ fn on_request(r: zap.Request) !void {
     std.log.info("ParamStr `{s}` is `{s}`", .{ param.name, param.value });
   }
 
-  var name = "World";
-  var params = r.getParamSlices();
-  if (params.next()) |param| {
-    name = param.value;
-  }
-  const body = try std.fmt.allocPrint(r.allocator(), "<html><body><h1>Hello {s}!</h1></body></html>", .{name});
+  const body = "<html><body><h1>Hello World!</h1></body></html>";
 
   r.sendBody(body) catch return;
 }
