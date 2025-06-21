@@ -14,8 +14,8 @@ RUN curl -fsSL https://ziglang.org/download/0.14.1/zig-x86_64-linux-0.14.1.tar.x
   && ls -lisah \
   && minisign -V -x zig.tar.xz.minisig -m zig-x86_64-linux-0.14.1.tar.xz -P 'RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U' \
   && tar xf zig-x86_64-linux-0.14.1.tar.xz \
-  && mv zig-linux-x86_64-0.14.1/zig /usr/bin/ \
-  && mv zig-linux-x86_64-0.14.1/lib/ /usr/lib/zig/ \
+  && mv zig-x86_64-linux-0.14.1/zig /usr/bin/ \
+  && mv zig-x86_64-linux-0.14.1/lib/ /usr/lib/zig/ \
   && zig version
 
 FROM debian:bookworm-slim as zigzap
