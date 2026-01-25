@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim as install
+FROM debian:trixie-slim as install
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -19,7 +19,7 @@ RUN curl -fsSL https://ziglang.org/download/0.15.1/zig-x86_64-linux-0.15.1.tar.x
   && mv zig-x86_64-linux-0.15.1/lib/ /usr/lib/zig/ \
   && zig version
 
-FROM debian:bookworm-slim as zigzap
+FROM debian:trixie-slim as zigzap
 
 ARG DEBIAN_FRONTEND=noninteractive
 
