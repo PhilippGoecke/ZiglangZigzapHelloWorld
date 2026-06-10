@@ -10,13 +10,14 @@ RUN apt update && apt upgrade -y \
 WORKDIR /ziglang
 
 # https://ziglang.org/download/
-RUN curl -fsSL https://ziglang.org/download/0.15.1/zig-x86_64-linux-0.15.1.tar.xz --output zig-x86_64-linux-0.15.1.tar.xz \
-  && curl https://ziglang.org/download/0.15.1/zig-x86_64-linux-0.15.1.tar.xz.minisig --output zig.tar.xz.minisig \
+ARG ZIG_VERSION=0.16.0
+RUN curl -fsSL https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz --output zig-x86_64-linux-${ZIG_VERSION}.tar.xz \
+  && curl https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz.minisig --output zig.tar.xz.minisig \
   && ls -lisah \
-  && minisign -V -x zig.tar.xz.minisig -m zig-x86_64-linux-0.15.1.tar.xz -P 'RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U' \
-  && tar xf zig-x86_64-linux-0.15.1.tar.xz \
-  && mv zig-x86_64-linux-0.15.1/zig /usr/bin/ \
-  && mv zig-x86_64-linux-0.15.1/lib/ /usr/lib/zig/ \
+  && minisign -V -x zig.tar.xz.minisig -m zig-x86_64-linux-${ZIG_VERSION}.tar.xz -P 'RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U' \
+  && tar xf zig-x86_64-linux-${ZIG_VERSION}.tar.xz \
+  && mv zig-x86_64-linux-${ZIG_VERSION}/zig /usr/bin/ \
+  && mv zig-x86_64-linux-${ZIG_VERSION}/lib/ /usr/lib/zig/ \
   && zig version
 
 FROM debian:trixie-slim as zigzap
