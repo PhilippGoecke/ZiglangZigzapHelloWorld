@@ -1,46 +1,140 @@
-FROM debian:trixie-slim as install
+FROM debian:trixie-slim AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt update && apt upgrade -y \
-  && apt install -y --no-install-recommends --no-install-suggests ca-certificates curl xz-utils minisign \
+  && apt install -y --no-install-recommends --no-install-suggests ca-certificates curl tar xz-utils minisign \
   && rm -rf "/var/lib/apt/lists/*" \
   && rm -rf /var/cache/apt/archives
 
-WORKDIR /ziglang
+# Install Zig
+ARG ZIG_VERSION=0.15.2
+ARG ZIG_SHA256=02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239
+RUN curl -fsSL -o /tmp/zig.tar.xz "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" \
+  && echo "${ZIG_SHA256}  /tmp/zig.tar.xz" | sha256sum -c - \
+  && tar -xJ -C /opt -f /tmp/zig.tar.xz \
+  && rm /tmp/zig.tar.xz \
+  && mv "/opt/zig-x86_64-linux-${ZIG_VERSION}" /opt/zig \
+  && ln -s /opt/zig/zig /usr/local/bin/zig
 
-# https://ziglang.org/download/
-ARG ZIG_VERSION=0.16.0
-RUN curl -fsSL https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz --output zig-x86_64-linux-${ZIG_VERSION}.tar.xz \
-  && curl https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz.minisig --output zig.tar.xz.minisig \
-  && ls -lisah \
-  && minisign -V -x zig.tar.xz.minisig -m zig-x86_64-linux-${ZIG_VERSION}.tar.xz -P 'RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U' \
-  && tar xf zig-x86_64-linux-${ZIG_VERSION}.tar.xz \
-  && mv zig-x86_64-linux-${ZIG_VERSION}/zig /usr/bin/ \
-  && mv zig-x86_64-linux-${ZIG_VERSION}/lib/ /usr/lib/zig/ \
-  && zig version
+WORKDIR /app
 
-FROM debian:trixie-slim as zigzap
+# build.zig.zon: fetch Horizon web framework
+RUN cat > build.zig.zon <<'EOF'
+.{
+    .name = .hello_horizon,
+    .version = "0.1.0",
+    .fingerprint = 0xe072792d6c8ef880,
+    .paths = .{""},
+    .dependencies = .{
+        .horizon = .{
+            .url = "https://github.com/HARMONICOM/horizon/archive/refs/tags/v0.1.7.tar.gz",
+            .hash = "hotizon-0.1.7-aaziTImIAwAXltE3CvmMVSzYr1G5LvmeKJu3tB47Tafh",
+        },
+    },
+}
+EOF
+
+# Let zig compute and save the correct dependency hash
+#RUN zig init \
+  # && zig fetch --save=horizon "https://github.com/HARMONICOM/horizon/archive/refs/tags/v0.1.7.tar.gz"
+#  && zig fetch --save-exact=horizon https://github.com/HARMONICOM/horizon/archive/refs/tags/v0.1.7.tar.gz
+
+# build.zig
+RUN cat > build.zig <<'EOF'
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const exe_mod = b.createModule(.{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const horizon = b.dependency("horizon", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe_mod.addImport("horizon", horizon.module("horizon"));
+
+    const exe = b.addExecutable(.{
+        .name = "hello_horizon",
+        .root_module = exe_mod,
+    });
+
+    b.installArtifact(exe);
+}
+EOF
+
+# src/main.zig: Hello world with optional "name" query parameter
+RUN mkdir -p src && cat > src/main.zig <<'EOF'
+const std = @import("std");
+const horizon = @import("horizon");
+
+fn extractNameParam(target: []const u8) ?[]const u8 {
+    const q = std.mem.indexOfScalar(u8, target, '?') orelse return null;
+    var it = std.mem.splitScalar(u8, target[q + 1 ..], '&');
+    while (it.next()) |pair| {
+        if (std.mem.startsWith(u8, pair, "name=")) {
+            return pair[5..];
+        }
+    }
+    return null;
+}
+
+fn handler(
+    ctx: *horizon.Context,
+    req: horizon.Request,
+    res: *horizon.ResponseWriter,
+) anyerror!void {
+    _ = ctx;
+    const name = extractNameParam(req.target) orelse "World";
+    var buf: [256]u8 = undefined;
+    const msg = try std.fmt.bufPrint(&buf, "Hello, {s}!\n", .{name});
+    try res.any().writeAll(msg);
+}
+
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    const addr = try std.net.Address.parseIp4("0.0.0.0", 8000);
+
+    var server = try horizon.Server.init(allocator, .{
+        .address = addr,
+        .handler = horizon.Handler.init(handler),
+    });
+    defer server.deinit();
+
+    std.log.info("Listening on http://0.0.0.0:8000 (use ?name=YourName)", .{});
+    try server.serve();
+}
+EOF
+
+#RUN zig build run
+RUN zig build -Doptimize=ReleaseSafe
+
+# ---- Runtime stage ----
+FROM debian:trixie-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt update && apt upgrade -y \
-  && apt install -y --no-install-recommends --no-install-suggests ca-certificates git \
+  && apt install -y --no-install-recommends --no-install-suggests ca-certificates libgcc-s1 \
   && rm -rf "/var/lib/apt/lists/*" \
   && rm -rf /var/cache/apt/archives
 
-COPY --from=install /usr/bin/zig /usr/bin/zig
-COPY --from=install /usr/lib/zig /usr/lib/zig
+WORKDIR /app
 
-WORKDIR /zigzap
+COPY --from=build /app/zig-out/bin/hello_horizon /usr/local/bin/hello_horizon
 
-RUN zig init \
-  && zig fetch --save "git+https://github.com/zigzap/zap#v0.11.0" \
-  && echo "const zap = b.dependency(\"zap\", .{ .target = target, .optimize = optimize, .openssl = false, });\nexe.root_module.addImport(\"zap\", zap.module(\"zap\"));\n}" >> build.zig \
-  && sed -zi "s/}\nconst/\nconst/g" build.zig
+# Greeting name is provided per-request via the "name" query parameter, e.g.:
+#   curl "http://localhost:8000/?name=Alice"
 
-COPY main.zig src/main.zig
+EXPOSE 8000
 
-EXPOSE 3000
-
-CMD ["zig", "build", "run"]
+ENTRYPOINT ["/usr/local/bin/hello_horizon"]
