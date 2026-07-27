@@ -20,7 +20,7 @@ fn on_request(r: zap.Request) !void {
   }
 
   var buf: [256]u8 = undefined;
-  const body = std.fmt.bufPrint(&buf, "Hello, {s}!\nZig version: {s}\nZap version: {s}\n", .{ name, @import("builtin").zig_version_string, zap.version }) catch return;
+  const body = std.fmt.bufPrint(&buf, "<html><body><h1>Hello, {s}!</h1>\n<h2>Zig version: {s}</h2>\n</body></html>", .{ name, @import("builtin").zig_version_string }) catch return;
 
   r.sendBody(body) catch return;
 }
