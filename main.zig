@@ -10,12 +10,17 @@ fn on_request(r: zap.Request) !void {
     std.debug.print("QUERY: {s}\n", .{the_query});
   }
 
+  var name: []const u8 = "World";
   var arg_it = r.getParamSlices();
   while (arg_it.next()) |param| {
     std.log.info("ParamStr `{s}` is `{s}`", .{ param.name, param.value });
+    if (std.mem.eql(u8, param.name, "name")) {
+      name = param.value;
+    }
   }
 
-  const body = "<html><body><h1>Hello World!</h1></body></html>";
+  var buf: [256]u8 = undefined;
+  const body = std.fmt.bufPrint(&buf, "<html><body><h1>Hello {s}!</h1></body></html>", .{name}) catch return;
 
   r.sendBody(body) catch return;
 }
